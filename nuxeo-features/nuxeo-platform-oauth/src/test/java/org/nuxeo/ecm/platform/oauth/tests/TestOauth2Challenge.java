@@ -18,8 +18,10 @@
  */
 package org.nuxeo.ecm.platform.oauth.tests;
 
-import static org.junit.Assert.*;
-import static org.nuxeo.ecm.platform.ui.web.auth.oauth2.NuxeoOAuth2Filter.ERRORS;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Date;
@@ -30,12 +32,14 @@ import javax.inject.Inject;
 import javax.ws.rs.core.MultivaluedMap;
 
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nuxeo.ecm.platform.oauth2.clients.ClientRegistry;
 import org.nuxeo.ecm.platform.oauth2.clients.OAuth2Client;
 import org.nuxeo.ecm.platform.oauth2.request.AuthorizationRequest;
+import org.nuxeo.ecm.platform.ui.web.auth.oauth2.NuxeoOAuth2Filter.ERRORS;
 import org.nuxeo.ecm.webengine.test.WebEngineFeature;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
@@ -123,6 +127,45 @@ public class TestOauth2Challenge {
 
     @Test
     public void tokenShouldCreateAndRefreshWithDummyAuthorization() throws IOException {
+        // Request a token
+        Map<String, String> tokenResponse = acquireToken();
+
+        // Refresh this token
+        Map<String, String> params = new HashMap<>();
+        params.put("redirect_uri", "Dummy");
+        params.put("client_id", CLIENT_ID);
+        params.put("client_secret", CLIENT_SECRET);
+        params.put("grant_type", "refresh_token");
+        params.put("refresh_token", tokenResponse.get("refresh_token"));
+
+        ClientResponse cr = responseFromTokenWith(params);
+        assertEquals(200, cr.getStatus());
+
+        String json = cr.getEntity(String.class);
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> refreshedResponse = mapper.readValue(json, new TypeReference<Map<String, String>>() {
+        });
+
+        assertNotSame(refreshedResponse.get("access_token"), tokenResponse.get("access_token"));
+    }
+
+    @Test
+    public void canAccessDocumentUsingToken() throws IOException {
+        WebResource wr = client.resource(BASE_URL).path("/nuxeo/api/v1/path/default-domain");
+        // Check unauthorized
+        ClientResponse cr = wr.get(ClientResponse.class);
+        assertEquals(401, cr.getStatus());
+
+        // Check authorized
+        Map<String, String> tokenResponse = acquireToken();
+        String accessToken = tokenResponse.get("access_token");
+        wr.header("Authorization", "Bearer " + accessToken);
+        cr = wr.get(ClientResponse.class);
+        assertEquals(200, cr.getStatus());
+
+    }
+
+    protected Map<String, String> acquireToken() throws IOException {
         AuthorizationRequest request = new TestAuthorizationRequest(CLIENT_ID, "code", null, "Dummy", new Date());
         TestAuthorizationRequest.getRequests().put("fake", request);
 
@@ -136,26 +179,16 @@ public class TestOauth2Challenge {
 
         ClientResponse cr = responseFromTokenWith(params);
         assertEquals(200, cr.getStatus());
+
         String json = cr.getEntity(String.class);
-
-        ObjectMapper obj = new ObjectMapper();
-
-        Map<?, ?> token = obj.readValue(json, Map.class);
-        assertNotNull(token);
-        String accessToken = (String) token.get("access_token");
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> tokenResponse = mapper.readValue(json, new TypeReference<Map<String, String>>() {
+        });
+        assertNotNull(tokenResponse);
+        String accessToken = tokenResponse.get("access_token");
+        assertNotNull(accessToken);
         assertEquals(32, accessToken.length());
-
-        // Refresh this token
-        params.remove("code");
-        params.put("grant_type", "refresh_token");
-        params.put("refresh_token", (String) token.get("refresh_token"));
-        cr = responseFromTokenWith(params);
-        assertEquals(200, cr.getStatus());
-
-        json = cr.getEntity(String.class);
-        Map<?, ?> refreshed = obj.readValue(json, Map.class);
-
-        assertNotSame(refreshed.get("access_token"), token.get("access_token"));
+        return tokenResponse;
     }
 
     protected ClientResponse responseFromTokenWith(Map<String, String> queryParams) {
