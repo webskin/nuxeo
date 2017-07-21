@@ -22,8 +22,10 @@ import org.nuxeo.ecm.core.test.DefaultRepositoryInit;
 import org.nuxeo.ecm.core.test.annotations.Granularity;
 import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
 import org.nuxeo.ecm.platform.login.test.ClientLoginFeature;
+import org.nuxeo.ecm.platform.login.test.DummyNuxeoLoginModule;
 import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
+import org.nuxeo.runtime.test.runner.FeaturesRunner;
 import org.nuxeo.runtime.test.runner.LocalDeploy;
 import org.nuxeo.runtime.test.runner.SimpleFeature;
 
@@ -38,5 +40,22 @@ import org.nuxeo.runtime.test.runner.SimpleFeature;
         "org.nuxeo.ecm.directory.types.contrib", "org.nuxeo.ecm.directory.multi" })
 @LocalDeploy("org.nuxeo.ecm.directory.multi.tests:schemas-config.xml")
 public class MultiDirectoryFeature extends SimpleFeature {
+
+    protected ClientLoginFeature login;
+
+    @Override
+    public void start(FeaturesRunner runner) {
+        login = runner.getFeature(ClientLoginFeature.class);
+    }
+
+    @Override
+    public void beforeSetup(FeaturesRunner runner) throws Exception {
+        login.login(DummyNuxeoLoginModule.ADMINISTRATOR_USERNAME);
+    }
+
+    @Override
+    public void afterTeardown(FeaturesRunner runner) throws Exception {
+        login.logout();
+    }
 
 }

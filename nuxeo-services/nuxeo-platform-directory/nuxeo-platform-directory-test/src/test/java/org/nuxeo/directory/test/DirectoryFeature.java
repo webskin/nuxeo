@@ -36,6 +36,7 @@ import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.platform.login.test.ClientLoginFeature;
+import org.nuxeo.ecm.platform.login.test.DummyNuxeoLoginModule;
 import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
@@ -69,6 +70,8 @@ public class DirectoryFeature extends SimpleFeature {
 
     protected CoreFeature coreFeature;
 
+    protected ClientLoginFeature login;
+
     protected DirectoryConfiguration directoryConfiguration;
 
     protected Granularity granularity;
@@ -89,6 +92,7 @@ public class DirectoryFeature extends SimpleFeature {
     @Override
     public void start(FeaturesRunner runner) {
         coreFeature = runner.getFeature(CoreFeature.class);
+        login = runner.getFeature(ClientLoginFeature.class);
         directoryConfiguration = new DirectoryConfiguration(coreFeature.getStorageConfiguration());
         directoryConfiguration.init();
         try {
@@ -106,6 +110,8 @@ public class DirectoryFeature extends SimpleFeature {
         // record all directories in their entirety
         allDirectoryData = new HashMap<>();
         DirectoryService directoryService = Framework.getService(DirectoryService.class);
+
+        login.login(DummyNuxeoLoginModule.ADMINISTRATOR_USERNAME);
 
         for (Directory dir : directoryService.getDirectories()) {
             if (dir.isReadOnly()) {
@@ -182,6 +188,8 @@ public class DirectoryFeature extends SimpleFeature {
         } finally {
             loginStack.pop();
         }
+
+        login.logout();
         allDirectoryData = null;
     }
 
