@@ -37,6 +37,7 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.PropertyException;
 import org.nuxeo.ecm.core.api.blobholder.BlobHolder;
+import org.nuxeo.ecm.core.api.blobholder.DocumentBlobHolder;
 import org.nuxeo.ecm.core.versioning.VersioningService;
 import org.nuxeo.ecm.platform.web.common.ServletHelper;
 import org.nuxeo.ecm.webengine.WebException;
@@ -85,8 +86,11 @@ public class BlobObject extends DefaultObject {
 
     @Override
     public <A> A getAdapter(Class<A> adapter) {
-        if (adapter.isAssignableFrom(Blob.class)) {
+        if (Blob.class.isAssignableFrom(adapter)) {
             return adapter.cast(getBlob());
+        }
+        if (BlobHolder.class.isAssignableFrom(adapter)) {
+            return adapter.cast(bh);
         }
         return super.getAdapter(adapter);
     }
@@ -123,6 +127,9 @@ public class BlobObject extends DefaultObject {
 
     @GET
     public Object doGet(@Context Request request) {
+        if (bh instanceof DocumentBlobHolder) {
+            return bh; // managed by DocumentBlobHolderWriter
+        }
         Blob blob = getBlob();
         if (blob == null) {
             throw new WebResourceNotFoundException("No attached file at " + fieldPath);
