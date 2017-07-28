@@ -20,6 +20,12 @@ String logoHeight = LoginScreenHelper.getValueWithDefault(screenConfig.getLogoHe
 String logoAlt = LoginScreenHelper.getValueWithDefault(screenConfig.getLogoAlt(), "Nuxeo");
 String logoUrl = LoginScreenHelper.getValueWithDefault(screenConfig.getLogoUrl(), context + "/img/login_logo.png");
 
+String redirectURI = (String)request.getAttribute("redirect_uri");
+String scope = (String)request.getAttribute("scope");
+String state = (String)request.getAttribute("state");
+String codeChallenge = (String)request.getAttribute("code_challenge");
+String codeChallengeMethod = (String)request.getAttribute("code_challenge_method");
+
 %>
 <html>
 <fmt:setBundle basename="messages" var="messages"/>
@@ -141,8 +147,21 @@ String logoUrl = LoginScreenHelper.getValueWithDefault(screenConfig.getLogoUrl()
       <fmt:param value="<%=productName%>"/>
     </fmt:message>
 
-    <input name="authorization_key" type="hidden" value="${authorization_key}"/>
-    <input name="state" type="hidden" value="${state}"/>
+    <input name="response_type" type="hidden" value="${response_type}"/>
+    <input name="client_id" type="hidden" value="${client_id}"/>
+    <% if (redirectURI != null) { %>
+    <input name="redirect_uri" type="hidden" value="<%= redirectURI %>"/>
+    <% } %>
+    <% if (scope != null) { %>
+    <input name="scope" type="hidden" value="<%= scope %>"/>
+    <% } %>
+    <% if (state != null) { %>
+    <input name="state" type="hidden" value="<%= state %>"/>
+    <% } %>
+    <% if (codeChallenge != null && codeChallengeMethod != null) { %>
+    <input name="code_challenge" type="hidden" value="<%= codeChallenge %>"/>
+    <input name="code_challenge_method" type="hidden" value="<%= codeChallengeMethod %>"/>
+    <% } %>
 
     <div class="buttons">
       <button class="button" name="deny_access" value="1">
